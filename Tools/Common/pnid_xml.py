@@ -3,9 +3,12 @@ import xml.etree.ElementTree as ET
 import math
 import cv2
 import os
+import json
 import numpy as np
 import matplotlib.pyplot as plt
+import xml.dom.minidom
 from xml.etree.ElementTree import Element, ElementTree, dump
+import xml.etree.ElementTree as ET
 
 
 def write_symbol_result_to_xml(out_dir, dt_result, symbol_dict, symbol_type_dict=None, img_shape_tuple=(9933, 7016, 3)):
@@ -167,8 +170,7 @@ class xml_reader():
         string filename : xml파일의 정보가 해당하는 도면의 이름
         int width, height, depth : 도면 이미지의 해상도 및 채널
         dict object_list : xml 내 object 정보를 저장하는 list
-                        (심볼의 경우 [symbolname, xmin, ymin, xmax, ymax])
-                        (텍스트의 경우 [text, xmin, ymin, xmax, ymax, orientation])
+                        (심볼의 경우 [symbolname, x1, y1, x2, y2, x3, y3, x4, y4])
 
     """
     def __init__(self, filepath):
@@ -182,9 +184,46 @@ class xml_reader():
         self.depth = int(self.root.find("size").findtext("depth"))
 
         self.object_list = []
+        self.error_list = []
+
+        for i, obj in enumerate(self.root.iter("symbol_object")):
+            bndbox = obj.find("bndbox")
+            try:
+                x1 = int(bndbox.findtext("x1"))
+                y1 = int(bndbox.findtext("y1"))
+                x2 = int(bndbox.findtext("x2"))
+                y2 = int(bndbox.findtext("y2"))
+                x3 = int(bndbox.findtext("x3"))
+                y3 = int(bndbox.findtext("y3"))
+                x4 = int(bndbox.findtext("x4"))
+                y4 = int(bndbox.findtext("y4"))
+
+                if not self.check_range(x1, y1, x2, y2, x3, y3, x4, y4):
+                    raise Exception('out of range')
+
+                self.object_list.append(
+                    [obj.findtext('type'), obj.findtext('class'), x1, y1, x2, y2, x3, y3, x4, y4],
+                )
+                # print(ET.tostring(bndbox, encoding='unicode'))
+            
+            except Exception as e:
+                self.error_list.append(
+                    {
+                        'index': i,
+                        'obj_info': ET.tostring(obj, encoding='unicode'),
+                        'error_message': e
+                    }
+                )
+                # print(ET.tostring(obj, encoding='unicode'))
+    
+    def check_range(self, x1, y1, x2, y2, x3, y3, x4, y4):
+        if 0 <= x1 < self.width and 0 <= x2 < self.width and 0 <= x3 < self.width and 0 <= x4 < self.width and \
+            0 <= y1 < self.height and 0 <= y2 < self.height and 0 <= y3 < self.height and 0 <= y4 < self.height:
+            return True
+        return False
 
     def getInfo(self):
-        return self.filename, self.width, self.height, self.depth, self.object_list
+        return self.filename, self.width, self.height, self.depth, self.object_list, self.error_list
 
     def write_xml(self, out_filename):
         indent(self.tree.getroot())
@@ -247,7 +286,6 @@ class symbol_xml_reader(xml_reader):
         for obj in obj_to_remove:
             self.root.remove(obj)
 
-
 class text_xml_reader(xml_reader):
     """
     텍스트 xml 파일 파싱 클래스
@@ -256,7 +294,6 @@ class text_xml_reader(xml_reader):
         super().__init__(filepath)
         self.object_tag = object_tag
         self.degree_tag = degree_tag
-
 
         for object in self.root.iter(self.object_tag):
             xmin = int(object.find("bndbox").findtext("xmin"))
