@@ -33,7 +33,7 @@ train_drawings = [x.split(".")[0] for x in os.listdir(symbol_xml_dir)
 
 symbol_txt_path = base_dir + "Hyundai_SymbolClass_Sym_Only.txt"
 
-include_text_as_class = False # Text를 별도의 클래스로 포함할 것인지 {"text"}
+include_text_as_class = True # Text를 별도의 클래스로 포함할 것인지 {"text"}
 include_text_orientation_as_class = False # 세로 문자열을 또다른 별도의 클래스로 포함할 것인지 {"text_rotated"},
 
 segment_params = [9933, 7016, 9933, 7016] # width_size, height_size, width_stride, height_stride

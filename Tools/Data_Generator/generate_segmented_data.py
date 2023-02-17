@@ -77,7 +77,6 @@ def segment_images(img_path, seg_out_dir, objects, txt_object_list, include_text
     width_stride = segment_params[2]
     height_stride = segment_params[3]
 
-
     bbox_array = np.zeros((len(objects),4))
     for ind in range(len(objects)):
         objects[ind] = [objects[ind][0],
