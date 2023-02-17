@@ -1,40 +1,54 @@
 import os
 import cv2
-from Common.pnid_xml import text_xml_reader, symbol_xml_reader
-from Visualize.image_drawing import draw_bbox_from_bbox_list
+import json
+from tqdm import tqdm
+from Misc.rotated_box import rotated_box
+from Common.pnid_xml import xml_reader
 
 # XML 데이터 검증을 위한 가시화 코드
 
-xml_dir = "D:/Test_Models/PNID/HyundaiEng/210520_Data/TextXML"
-drawing_img_dir = "D:/Test_Models/PNID/HyundaiEng/210520_Data/Drawing"
-output_img_dir = "D:/Test_Models/PNID/HyundaiEng/210520_Data/TextXML_Visualized"
-is_text_xml = False
+#TODO: symbol & text xml 통합 후 xml2 관련 코드는 삭제 예정
 
-xml_filenames = os.listdir(xml_dir)
+xml_dir = "C:/Users/DongwonJeong/Desktop/HyundaiPNID/Data/2023/TrainingData_SYMBOL/SymbolXML"
+xml_dir2 = "C:/Users/DongwonJeong/Desktop/HyundaiPNID/Data/2023/TextXML"
+drawing_img_dir = "C:/Users/DongwonJeong/Desktop/HyundaiPNID/Data/2023/JPG"
+output_img_dir = "C:/Users/DongwonJeong/Desktop/HyundaiPNID/Data/2023/VisualizedJPG_RangeCheck"
+start_xml_name = ""
 
-for xml_filename in xml_filenames:
-    print(xml_filename)
+xml_filenames = sorted(os.listdir(xml_dir))
+
+error_dict = {}
+
+for xml_filename in tqdm(xml_filenames):
+    if xml_filename < start_xml_name:
+        continue
     name_only = xml_filename.split(".")[0]
-    xml_path = os.path.join(xml_dir, name_only + ".xml")
     drawing_path = os.path.join(drawing_img_dir, name_only + ".jpg")
 
-    if is_text_xml == True:
-        text_xml_reader_obj = text_xml_reader(xml_path)
-        filename, width, height, depth, object_list = text_xml_reader_obj.getInfo()
-    else:
-        symbol_xml_reader_obj = symbol_xml_reader(xml_path)
-        filename, width, height, depth, object_list = symbol_xml_reader_obj.getInfo()
+    xml_path = os.path.join(xml_dir, name_only + ".xml")
+    xml_reader_obj = xml_reader(xml_path)
+    filename, width, height, depth, object_list, error_list = xml_reader_obj.getInfo()
+
+    xml2_path = os.path.join(xml_dir2, name_only + ".xml")
+    xml2_reader_obj = xml_reader(xml2_path)
+    filename2, width2, height2, depth2, object_list2, error_list2 = xml2_reader_obj.getInfo()
+
+    total_error_list = error_list + error_list2 
+
+    if len(total_error_list) != 0:
+        error_dict[filename] = total_error_list
 
     img = cv2.imread(drawing_path)
+    
+    for obj in object_list:
+        rotated_box(vertices=obj[2:], text=obj[1]).draw(img)
 
-    bbox = [[x[1], x[2], x[3]-x[1], x[4]-x[2]] for x in object_list]
-    bbox_data = [x[0] for x in object_list]
+    for obj in object_list2:
+        rotated_box(vertices=obj[2:], text=obj[1]).draw(img)
 
-    draw_img = draw_bbox_from_bbox_list(img,bbox,bbox_data,(255,0,0),thickness=2)
+    out_path = os.path.join(output_img_dir, f"{name_only}" + ".jpg")
 
-    if is_text_xml == True:
-        out_path = os.path.join(output_img_dir, f"{name_only}_text" + ".jpg")
-    else:
-        out_path = os.path.join(output_img_dir, f"{name_only}_symbol" + ".jpg")
+    cv2.imwrite(out_path, img)
 
-    cv2.imwrite(out_path,draw_img)
+with open(f'{output_img_dir}/error_info.json', 'w') as f: 
+    json.dump(error_dict, f, indent=4)
