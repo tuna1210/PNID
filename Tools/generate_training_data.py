@@ -3,16 +3,18 @@ import random
 import pickle
 from Data_Generator.generate_segmented_data import generate_segmented_data
 from Common.symbol_io import read_symbol_txt
-from Data_Generator.write_coco_annotation import write_coco_annotation
+from Data_Generator.write_annotation import write_coco_annotation, write_dota_annotation
+from multiprocessing import Manager
+import parmap
 
 # 학습 데이터 생성 코드. 도면을 train/test/val로 나누고, 각 set의 이미지를 분할하여 sub_img들로 만들어 저장함
 # 이때, train의 경우 심볼(또는 옵션에 따라 심볼+텍스트)가 존재하지 않는 도면은 저장하지 않음
 # 단 test/val 도면의 경우 심볼이 존재하지 않아도 저장함
 
 base_dir = r"E:\PNID_Data\2023_0228"
-drawing_dir = base_dir + r"Drawing"
-drawing_segment_dir = base_dir + r"Drawing_Segment/Dataset_9933_7016_0.125_wo_Text"
-xml_dir = base_dir + r"XML"
+drawing_dir = base_dir + r"\Drawing"
+drawing_segment_dir = base_dir + r"\Drawing_Segment\800_800"
+xml_dir = base_dir + r"\XML"
 
 val_drawings = ['26071-200-M6-052-00025', '26071-200-M6-052-00039', '26071-200-M6-052-00046', '26071-200-M6-052-00073',
                 '26071-200-M6-052-00091', '26071-200-M6-052-00097', '26071-200-M6-052-00543', '26071-200-M6-052-00904',
@@ -54,19 +56,19 @@ train_drawings = [x.split(".")[0] for x in os.listdir(xml_dir)
                   x.split(".")[0] not in val_drawings and
                   x.split(".")[0] not in ignore_drawing ]
 
-symbol_txt_path = base_dir + "Hyundai_SymbolClass_Sym_Only.txt"
+symbol_txt_path = base_dir + "\SymbolClass_Class.txt"
 
 include_text_as_class = True # Text를 별도의 클래스로 포함할 것인지 {"text"}
-include_text_orientation_as_class = False # 세로 문자열을 또다른 별도의 클래스로 포함할 것인지 {"text_rotated"},
+# include_text_orientation_as_class = False # 세로 문자열을 또다른 별도의 클래스로 포함할 것인지 {"text_rotated"},
 
 segment_params = [800, 800, 300, 300] # width_size, height_size, width_stride, height_stride
-drawing_resize_scale = 0.125
+drawing_resize_scale = 0.5
 
-symbol_dict = read_symbol_txt(symbol_txt_path, include_text_as_class, include_text_orientation_as_class)
+symbol_dict = read_symbol_txt(symbol_txt_path, include_text_as_class)
 
-train_xmls = [os.path.join(symbol_xml_dir, f"{x}.xml") for x in train_drawings]
-val_xmls = [os.path.join(symbol_xml_dir, f"{x}.xml") for x in val_drawings]
-test_xmls = [os.path.join(symbol_xml_dir, f"{x}.xml") for x in test_drawings]
+train_xmls = [os.path.join(xml_dir, f"{x}.xml") for x in train_drawings]
+val_xmls = [os.path.join(xml_dir, f"{x}.xml") for x in val_drawings]
+test_xmls = [os.path.join(xml_dir, f"{x}.xml") for x in test_drawings]
 
 # # Random Shuffle
 # train_ratio = 0.9
@@ -76,14 +78,47 @@ test_xmls = [os.path.join(symbol_xml_dir, f"{x}.xml") for x in test_drawings]
 # train_xmls = xml_paths_without_test[0:train_count]
 # val_xmls = xml_paths_without_test[train_count:]
 
-val_annotation_data = generate_segmented_data(val_xmls, drawing_dir, drawing_segment_dir, segment_params, text_xml_dir,
-                                              symbol_dict, include_text_as_class, include_text_orientation_as_class, drawing_resize_scale, "val")
-write_coco_annotation(os.path.join(drawing_segment_dir,"val.json"), val_annotation_data, symbol_dict, segment_params)
+def segment_and_write(prefix):
+    if prefix == 'train':
+        annotation_data = generate_segmented_data(train_xmls, drawing_dir, drawing_segment_dir, segment_params,
+                                                symbol_dict, drawing_resize_scale, prefix)
+        write_dota_annotation(drawing_segment_dir, annotation_data, symbol_dict, segment_params, prefix)
+    if prefix == 'val':
+        annotation_data = generate_segmented_data(val_xmls, drawing_dir, drawing_segment_dir, segment_params,
+                                                symbol_dict, drawing_resize_scale, prefix)
+        write_dota_annotation(drawing_segment_dir, annotation_data, symbol_dict, segment_params, prefix)
+    if prefix == 'test':
+        annotation_data = generate_segmented_data(test_xmls, drawing_dir, drawing_segment_dir, segment_params,
+                                                symbol_dict, drawing_resize_scale, prefix)
+        write_dota_annotation(drawing_segment_dir, annotation_data, symbol_dict, segment_params, prefix)
 
-train_annotation_data = generate_segmented_data(train_xmls, drawing_dir, drawing_segment_dir, segment_params, text_xml_dir,
-                                                symbol_dict, include_text_as_class, include_text_orientation_as_class, drawing_resize_scale, "train")
-write_coco_annotation(os.path.join(drawing_segment_dir,"train.json"), train_annotation_data, symbol_dict, segment_params)
+if __name__ == '__main__':
+    num_cores = 8
+    manager = Manager()
+    d = manager.dict()
+    input_list = ['train', 'val', 'test']
+    parmap.map(segment_and_write, input_list, pm_pbar=True, pm_processes=num_cores)
 
-test_annotation_data = generate_segmented_data(test_xmls, drawing_dir, drawing_segment_dir, segment_params, text_xml_dir,
-                                               symbol_dict, include_text_as_class, include_text_orientation_as_class, drawing_resize_scale, "test")
-write_coco_annotation(os.path.join(drawing_segment_dir,"test.json"), test_annotation_data, symbol_dict, segment_params)
+# val_annotation_data = generate_segmented_data(val_xmls, drawing_dir, drawing_segment_dir, segment_params,
+#                                               symbol_dict, drawing_resize_scale, "val")
+# write_dota_annotation(drawing_segment_dir, val_annotation_data, symbol_dict, segment_params, 'val')
+
+# train_annotation_data = generate_segmented_data(train_xmls, drawing_dir, drawing_segment_dir, segment_params,
+#                                                 symbol_dict, drawing_resize_scale, "train")
+# write_dota_annotation(drawing_segment_dir, train_annotation_data, symbol_dict, segment_params, 'train')
+
+# test_annotation_data = generate_segmented_data(test_xmls, drawing_dir, drawing_segment_dir, segment_params,
+#                                                symbol_dict, drawing_resize_scale, "test")
+# write_dota_annotation(drawing_segment_dir, test_annotation_data, symbol_dict, segment_params, 'test')
+
+# val_annotation_data = generate_segmented_data(val_xmls, drawing_dir, drawing_segment_dir, segment_params,
+#                                               symbol_dict, include_text_as_class, include_text_orientation_as_class, drawing_resize_scale, "val")
+# write_coco_annotation(os.path.join(drawing_segment_dir,"val.json"), val_annotation_data, symbol_dict, segment_params)
+
+# train_annotation_data = generate_segmented_data(train_xmls, drawing_dir, drawing_segment_dir, segment_params,
+#                                                 symbol_dict, include_text_as_class, include_text_orientation_as_class, drawing_resize_scale, "train")
+# write_coco_annotation(os.path.join(drawing_segment_dir,"train.json"), train_annotation_data, symbol_dict, segment_params)
+
+# test_annotation_data = generate_segmented_data(test_xmls, drawing_dir, drawing_segment_dir, segment_params,
+#                                                symbol_dict, include_text_as_class, include_text_orientation_as_class, drawing_resize_scale, "test")
+# write_coco_annotation(os.path.join(drawing_segment_dir,"test.json"), test_annotation_data, symbol_dict, segment_params)
