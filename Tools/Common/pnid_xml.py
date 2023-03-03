@@ -211,7 +211,7 @@ class xml_reader():
                     {
                         'index': i,
                         'obj_info': ET.tostring(obj, encoding='unicode'),
-                        'error_message': e
+                        'error_message': str(e)
                     }
                 )
                 # print(ET.tostring(obj, encoding='unicode'))
@@ -229,7 +229,48 @@ class xml_reader():
         indent(self.tree.getroot())
         self.tree.write(out_filename)
 
+    def error_correction(self, img_dir, remove_empty_object=True, remove_object_out_of_img=True):
+        """
+        심볼 xml관련하여 존재하는 오차들을 수정하기 위한 클래스 메소드
 
+        Arguments:
+            img_dir (string): 도면 이미지가 저장되어 있는 폴더. remove_blank_pixel이 true일때 사용
+            remove_empty_object (bool): 빈 객체의 경우 삭제할지 여부
+            remove_object_out_of_img (bool) : box 좌표가 도면 밖의 위치일 때 (ex : 좌표값이 음수) 해당 object를 제거할 것인지 여부
+
+        Return:
+            None (self.object_list의 박스 좌표가 변화함)
+        """
+
+        filename, width, height, depth, object_list = self.getInfo()
+
+        obj_to_remove = []
+        for object in self.root.iter("object"):
+            filename_tag = object.findtext("filename")
+            try:
+                xmin = int(object.find("bndbox").findtext("xmin"))
+                xmax = int(object.find("bndbox").findtext("xmax"))
+                ymin = int(object.find("bndbox").findtext("ymin"))
+                ymax = int(object.find("bndbox").findtext("ymax"))
+            except:
+                obj_to_remove.append(object)
+                continue
+
+            symbol_name = object.findtext("name")
+
+            if remove_empty_object == True:
+                if symbol_name == "":
+                    obj_to_remove.append(object)
+
+            if remove_object_out_of_img == True:
+                if xmin < 0 or ymin < 0 or xmax >= width or ymax >= height:
+                    obj_to_remove.append(object)
+
+        obj_to_remove = set(obj_to_remove)
+        for obj in obj_to_remove:
+            self.root.remove(obj)
+
+'''
 class symbol_xml_reader(xml_reader):
     """
     심볼 xml 파일 파싱 클래스
@@ -285,7 +326,8 @@ class symbol_xml_reader(xml_reader):
         obj_to_remove = set(obj_to_remove)
         for obj in obj_to_remove:
             self.root.remove(obj)
-
+'''
+'''
 class text_xml_reader(xml_reader):
     """
     텍스트 xml 파일 파싱 클래스
@@ -440,7 +482,7 @@ class text_xml_reader(xml_reader):
                     if (ymax - ymin) * remove_blank_threshold > (last - first):
                         object.find("bndbox").find("ymin").text = str(ymin + first - margin)
                         object.find("bndbox").find("ymax").text = str(ymin + last + margin)
-
+'''
 
 def indent(elem, level=0):  # 자료 출처 https://goo.gl/J8VoDK
     """ XML의 들여쓰기 포함한 출력을 위한 함수

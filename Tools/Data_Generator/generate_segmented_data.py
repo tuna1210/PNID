@@ -35,7 +35,6 @@ def generate_segmented_data(xml_list, drawing_dir, drawing_segment_dir, segment_
         for i in range(len(object_list)):
             object_list[i][0] = symbol_dict[object_list[i][0].split("-")[0]]
 
-
         img_file_path = os.path.join(drawing_dir, img_filename)
 
         if include_text_as_class == True and os.path.exists(os.path.join(text_xml_dir, os.path.basename(xmlPath))):
