@@ -10,7 +10,7 @@ def read_symbol_type_txt(filename):
 
     return class_name_to_type_dict
 
-def read_symbol_txt(filename, include_text_as_class, include_text_orientation_as_class):
+def read_symbol_txt(filename, include_text_as_class):
     class_index = 0
     class_name_to_index_dict = {}
     class_index_to_name_dict = {}
@@ -25,10 +25,6 @@ def read_symbol_txt(filename, include_text_as_class, include_text_orientation_as
 
     if include_text_as_class == True:
         class_name_to_index_dict["text"] = len(class_name_to_index_dict.items())
-
-    if include_text_orientation_as_class == True:
-        class_name_to_index_dict["text_rotated"] = len(class_name_to_index_dict.items())
-        class_name_to_index_dict["text_rotated_45"] = len(class_name_to_index_dict.items())
 
     return class_name_to_index_dict
 

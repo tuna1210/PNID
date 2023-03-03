@@ -1,54 +1,36 @@
 import json
+import os
 
-def write_dota_annotation(out_path, annotation_data, symbol_dict, segment_params):
+def write_dota_annotation(drawing_segment_dir, annotation_data, symbol_dict, segment_params, prefix):
     """ 저장된 분할 도면 정보를 기반으로 DOTA 포맷의 txt 파일 생성
 
     Arguments:
         out_path (string): 출력 파일명
-        annotation_data (list): 출력 annotation 데이터
+        annotation_data (list): 출력 annotation 데이터 (각 요소 형식 : [sub_img_name, type, class(string), x1, y1, x2, y2, x3, y3, x4, y4])
         symbol_dict (dict): 심볼 dictionaty (category id 매칭에 사용)
         segment_params (list): segmentation parameter ([width,height, width_stride, height_stride]
     """
+    if os.path.exists(os.path.join(drawing_segment_dir, prefix)) == False:
+        os.mkdir(os.path.join(drawing_segment_dir, prefix))
+
+    if os.path.exists(os.path.join(drawing_segment_dir, prefix, 'annfiles')) == False:
+        os.mkdir(os.path.join(drawing_segment_dir, prefix, 'annfiles'))
+
+    out_dir = os.path.join(drawing_segment_dir, prefix, 'annfiles')
+
     data = {}
-    data["type"] = "instances"
-    image_dict = construct_image_dict(annotation_data)
+    for annotation in annotation_data:
+        if annotation[0] not in data:
+            data[annotation[0]] = []
 
-    data["images"] = []
-    for img_name, idx in image_dict.items():
-        data["images"].append({"file_name" : img_name, "width" : segment_params[0], "height" : segment_params[1], "id" : idx})
+        data[annotation[0]].append(annotation[1:])
 
-    data["annotations"] = []
-    instance_id = 1
-    for annotation in annotation_data: # [drawingname, symname, minx, miny, maxx, maxy]
-        if annotation[1] < 0: # test/val set을 위한 예외 case
-            continue
-
-        area = (annotation[4]-annotation[2]) * (annotation[5]-annotation[3])
-
-        bbox = [annotation[2],annotation[3],annotation[4]-annotation[2],annotation[5]-annotation[3]] # [x y width height]
-
-        if annotation[1] in symbol_dict.values():
-            data["annotations"].append({"id" : instance_id,
-                                        "bbox" : bbox ,
-                                       "image_id" : image_dict[annotation[0]],
-                                       "segmentation" : [],
-                                       "ignore" : 0,
-                                       "area" : area,
-                                       "iscrowd" : 0,
-                                       "category_id": annotation[1]})
-            instance_id = instance_id+1
-
-    data["categories"] = []
-    for key, val in symbol_dict.items():
-        data["categories"].append({"id" : val,
-                                   "name" : key})
-
-    # data["annotations"].append({"bbox": [annotation[2], annotation[4], annotation[3], annotation[5]]})
-
-    with open(out_path, "w") as json_out:
-        json.dump(data, json_out, indent=4)
-
-    return image_dict
+    for img_name, ann_list in data.items():
+        with open(os.path.join(out_dir, img_name.replace('.jpg', '.txt')), 'w') as out_txt:
+            for ann in ann_list:
+                category = ann[1] if ann[0] != 'text' else 'text'
+                difficulty = 0
+                out_txt.write(f'{ann[2]} {ann[3]} {ann[4]} {ann[5]} {ann[6]} {ann[7]} {ann[8]} {ann[9]} {category} {difficulty}\n')
 
 def write_coco_annotation(out_path, annotation_data, symbol_dict, segment_params):
     """ 저장된 분할 도면 정보를 기반으로 COCO 포맷의 json 파일 생성 # TODO: coco_json으로 이동 검토

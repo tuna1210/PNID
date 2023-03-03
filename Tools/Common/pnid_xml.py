@@ -98,7 +98,6 @@ def write_symbol_result_to_xml(out_dir, dt_result, symbol_dict, symbol_type_dict
         out_path = os.path.join(out_dir, f"{filename}.xml")
         ElementTree(root).write(out_path)
 
-
 def write_text_result_to_xml(out_dir, dt_result_text, symbol_dict):
     for filename, objects in dt_result_text.items():
         root = Element("annotation")
@@ -158,7 +157,6 @@ def write_text_result_to_xml(out_dir, dt_result_text, symbol_dict):
         out_path = os.path.join(out_dir, f"{filename}_text.xml")
         ElementTree(root).write(out_path)
 
-
 class xml_reader():
     """
     도면 인식용 심볼 및 XML 파일 파싱 기본 클래스
@@ -170,7 +168,7 @@ class xml_reader():
         string filename : xml파일의 정보가 해당하는 도면의 이름
         int width, height, depth : 도면 이미지의 해상도 및 채널
         dict object_list : xml 내 object 정보를 저장하는 list
-                        (심볼의 경우 [symbolname, x1, y1, x2, y2, x3, y3, x4, y4])
+                          [type, symbolname, x1, y1, x2, y2, x3, y3, x4, y4]
 
     """
     def __init__(self, filepath):
@@ -223,7 +221,10 @@ class xml_reader():
         return False
 
     def getInfo(self):
-        return self.filename, self.width, self.height, self.depth, self.object_list, self.error_list
+        return self.filename, self.width, self.height, self.depth, self.object_list
+
+    def getErrorInfo(self):
+        return self.error_list
 
     def write_xml(self, out_filename):
         indent(self.tree.getroot())
