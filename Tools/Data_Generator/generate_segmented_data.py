@@ -36,7 +36,7 @@ def generate_segmented_data(xml_list, drawing_dir, drawing_segment_dir, segment_
         for i in range(len(object_list)):
             name = object_list[i][1] if object_list[i][0] != 'text' else 'text'
             # try:
-            if object_list[i][0] not in symbol_dict:
+            if name not in symbol_dict:
                 no_sym_list.add((img_filename, name))
             #     object_list[i][0] = symbol_dict[name]
             # except:
