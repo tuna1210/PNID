@@ -168,7 +168,7 @@ class xml_reader():
         string filename : xml파일의 정보가 해당하는 도면의 이름
         int width, height, depth : 도면 이미지의 해상도 및 채널
         dict object_list : xml 내 object 정보를 저장하는 list
-                          [type, symbolname, x1, y1, x2, y2, x3, y3, x4, y4]
+                          [type, class, x1, y1, x2, y2, x3, y3, x4, y4]
 
     """
     def __init__(self, filepath):

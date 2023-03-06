@@ -6,9 +6,10 @@ def write_dota_annotation(drawing_segment_dir, annotation_data, symbol_dict, seg
 
     Arguments:
         out_path (string): 출력 파일명
-        annotation_data (list): 출력 annotation 데이터 (각 요소 형식 : [sub_img_name, type, class(string), x1, y1, x2, y2, x3, y3, x4, y4])
+        annotation_data (list): 출력 annotation 데이터
+                                (각 요소 형식 : [sub_img_name(str), type(str), class(str), x1(int), y1(...), x2, y2, x3, y3, x4, y4])
         symbol_dict (dict): 심볼 dictionaty (category id 매칭에 사용)
-        segment_params (list): segmentation parameter ([width,height, width_stride, height_stride]
+        segment_params (list): segmentation parameter ([width, height, width_stride, height_stride]
     """
     if os.path.exists(os.path.join(drawing_segment_dir, prefix)) == False:
         os.mkdir(os.path.join(drawing_segment_dir, prefix))
@@ -27,7 +28,10 @@ def write_dota_annotation(drawing_segment_dir, annotation_data, symbol_dict, seg
 
     for img_name, ann_list in data.items():
         with open(os.path.join(out_dir, img_name.replace('.jpg', '.txt')), 'w') as out_txt:
+
             for ann in ann_list:
+                if ann[0] == -1:
+                    continue
                 category = ann[1] if ann[0] != 'text' else 'text'
                 difficulty = 0
                 out_txt.write(f'{ann[2]} {ann[3]} {ann[4]} {ann[5]} {ann[6]} {ann[7]} {ann[8]} {ann[9]} {category} {difficulty}\n')

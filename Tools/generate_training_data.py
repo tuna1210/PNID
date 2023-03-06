@@ -79,24 +79,25 @@ test_xmls = [os.path.join(xml_dir, f"{x}.xml") for x in test_drawings]
 # val_xmls = xml_paths_without_test[train_count:]
 
 def segment_and_write(prefix):
+    ''' train/val/test셋 분할 함수 (병렬처리를 위해 함수 하나로 묶음)
+    '''
     if prefix == 'train':
         annotation_data = generate_segmented_data(train_xmls, drawing_dir, drawing_segment_dir, segment_params,
                                                 symbol_dict, drawing_resize_scale, prefix)
-        write_dota_annotation(drawing_segment_dir, annotation_data, symbol_dict, segment_params, prefix)
     if prefix == 'val':
         annotation_data = generate_segmented_data(val_xmls, drawing_dir, drawing_segment_dir, segment_params,
                                                 symbol_dict, drawing_resize_scale, prefix)
-        write_dota_annotation(drawing_segment_dir, annotation_data, symbol_dict, segment_params, prefix)
     if prefix == 'test':
         annotation_data = generate_segmented_data(test_xmls, drawing_dir, drawing_segment_dir, segment_params,
                                                 symbol_dict, drawing_resize_scale, prefix)
-        write_dota_annotation(drawing_segment_dir, annotation_data, symbol_dict, segment_params, prefix)
+    write_dota_annotation(drawing_segment_dir, annotation_data, symbol_dict, segment_params, prefix)
 
 if __name__ == '__main__':
     num_cores = 8
     manager = Manager()
     d = manager.dict()
     input_list = ['train', 'val', 'test']
+    # segment_and_write('val')
     parmap.map(segment_and_write, input_list, pm_pbar=True, pm_processes=num_cores)
 
 # val_annotation_data = generate_segmented_data(val_xmls, drawing_dir, drawing_segment_dir, segment_params,

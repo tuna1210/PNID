@@ -35,11 +35,11 @@ def generate_segmented_data(xml_list, drawing_dir, drawing_segment_dir, segment_
 
         for i in range(len(object_list)):
             name = object_list[i][1] if object_list[i][0] != 'text' else 'text'
-            try:
-                object_list[i][0] = symbol_dict[name]
-            except:
+            # try:
+            if object_list[i][0] not in symbol_dict:
                 no_sym_list.add((img_filename, name))
-                i -= 1
+            #     object_list[i][0] = symbol_dict[name]
+            # except:
 
         img_file_path = os.path.join(drawing_dir, img_filename)
 
@@ -48,8 +48,9 @@ def generate_segmented_data(xml_list, drawing_dir, drawing_segment_dir, segment_
 
         entire_segmented_info.extend(segmented_objects_info)
 
-    with open(os.path.join(drawing_segment_dir, f'no_sym_list_{prefix}.txt'), 'w') as nosym:
-        nosym.write(str(no_sym_list))
+    if len(no_sym_list) != 0:
+        with open(os.path.join(drawing_segment_dir, f'no_sym_list_{prefix}.txt'), 'w') as nosym:
+            nosym.write(str(no_sym_list))
 
     return entire_segmented_info
 
@@ -64,7 +65,7 @@ def segment_images(img_path, drawing_segment_dir, objects, symbol_dict, segment_
         segment_params (list): 분할 파라메터 [가로 크기, 세로 크기, 가로 stride, 세로 stride]
         drawing_resize_scale (float): 도면 크기 조절 (분할 전)
         prefix (string): train/val/test 중 하나. 이미지 저장 폴더명 생성에 필요
-        ignore_exist (bool): 분할 이미지가 있으면 symbol 정보만 취하고 이미지 저장을 pass할지에 대한 여부 (True: overwrite)
+        ignore_exist (bool): 분할 이미지가 이미 존재하면 symbol 정보만 취하고 이미지 저장은 수행하지 않을지에대한 여부 (True: overwrite)
 
     Return:
         seg_obj_info : 한 장의 도면에서 생성된 스케일이 적용된 분할 도면의 전체 정보 [sub_img_name, type, class(string), x1, y1, x2, y2, x3, y3, x4, y4]
@@ -151,26 +152,26 @@ def segment_images(img_path, drawing_segment_dir, objects, symbol_dict, segment_
                 w_index += 1
                 continue
 
-            sub_img = np.ones((height_size, width_size, 3)) * 255
-            if start_width+width_size > img.shape[1] and start_height+height_size > img.shape[0]:
-                sub_img[0:img.shape[0] - (start_height + height_size),
-                        0:img.shape[1] - (start_width + width_size), :] = img[start_height:start_height + height_size,
-                                                                             start_width:start_width + width_size, :]
-            elif start_width+width_size > img.shape[1]:
-                sub_img[:, 0:img.shape[1]-(start_width+width_size), :] = img[start_height:start_height+height_size, start_width:img.shape[1],:]
-            elif start_height+height_size > img.shape[0]:
-                sub_img[0:img.shape[0] - (start_height + height_size), : , :] = img[start_height:img.shape[0], start_width:start_width+width_size, :]
-            else:
-                sub_img = img[start_height:start_height+height_size, start_width:start_width+width_size, :]
-
             filename, _ = os.path.splitext(os.path.basename(img_path))
             sub_img_filename = f"{filename}_{h_index}_{w_index}.jpg"
 
             if not os.path.isfile(os.path.join(out_dir, sub_img_filename)) and ignore_exist:
+                sub_img = np.ones((height_size, width_size, 3)) * 255
+                if start_width+width_size > img.shape[1] and start_height+height_size > img.shape[0]:
+                    sub_img[0:img.shape[0] - (start_height + height_size),
+                            0:img.shape[1] - (start_width + width_size), :] = img[start_height:start_height + height_size,
+                                                                                start_width:start_width + width_size, :]
+                elif start_width+width_size > img.shape[1]:
+                    sub_img[:, 0:img.shape[1]-(start_width+width_size), :] = img[start_height:start_height+height_size, start_width:img.shape[1],:]
+                elif start_height+height_size > img.shape[0]:
+                    sub_img[0:img.shape[0] - (start_height + height_size), : , :] = img[start_height:img.shape[0], start_width:start_width+width_size, :]
+                else:
+                    sub_img = img[start_height:start_height+height_size, start_width:start_width+width_size, :]
+                    
                 cv2.imwrite(os.path.join(out_dir, sub_img_filename), sub_img)
 
             for i in in_bbox_ind:
-                seg_obj_info.append([sub_img_filename, objects[i][0], objects[i][2], 
+                seg_obj_info.append([sub_img_filename, objects[i][0], objects[i][1], 
                                      objects[i][2] - start_width, objects[i][3] - start_height, 
                                      objects[i][4] - start_width, objects[i][5] - start_height,
                                      objects[i][6] - start_width, objects[i][7] - start_height,
@@ -198,7 +199,7 @@ def segment_images(img_path, drawing_segment_dir, objects, symbol_dict, segment_
             #         seg_obj_info.append([sub_img_filename, symbol_dict["text"], txt_object_list[i][1] - start_width, txt_object_list[i][2] - start_height,
             #                              txt_object_list[i][3] - start_width, txt_object_list[i][4] - start_height])
 
-            if prefix != "train": # test/val은 박스가 없어도 이미지 인덱스를 만들기 위해 추가
+            if prefix != "train" and len(seg_obj_info) == 0: # test/val은 박스가 없어도 이미지 인덱스를 만들기 위해 추가
                 seg_obj_info.append([sub_img_filename, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0])
 
             start_width += width_stride
