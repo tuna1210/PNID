@@ -153,7 +153,7 @@ def segment_images(img_path, drawing_segment_dir, objects, symbol_dict, segment_
                 continue
 
             filename, _ = os.path.splitext(os.path.basename(img_path))
-            sub_img_filename = f"{filename}_{h_index}_{w_index}.jpg"
+            sub_img_filename = f"{filename}_{h_index}_{w_index}.png"
 
             if not os.path.isfile(os.path.join(out_dir, sub_img_filename)) and ignore_exist:
                 sub_img = np.ones((height_size, width_size, 3)) * 255
@@ -199,7 +199,8 @@ def segment_images(img_path, drawing_segment_dir, objects, symbol_dict, segment_
             #         seg_obj_info.append([sub_img_filename, symbol_dict["text"], txt_object_list[i][1] - start_width, txt_object_list[i][2] - start_height,
             #                              txt_object_list[i][3] - start_width, txt_object_list[i][4] - start_height])
 
-            if prefix != "train" and len(seg_obj_info) == 0: # test/val은 박스가 없어도 이미지 인덱스를 만들기 위해 추가
+            # if prefix != "train" and len(seg_obj_info) == 0: # test/val은 박스가 없어도 이미지 인덱스를 만들기 위해 추가
+            if len(in_bbox_ind) == 0: # test/val은 박스가 없어도 이미지 인덱스를 만들기 위해 추가
                 seg_obj_info.append([sub_img_filename, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0])
 
             start_width += width_stride

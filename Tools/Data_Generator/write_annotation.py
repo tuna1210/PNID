@@ -27,10 +27,13 @@ def write_dota_annotation(drawing_segment_dir, annotation_data, symbol_dict, seg
         data[annotation[0]].append(annotation[1:])
 
     for img_name, ann_list in data.items():
-        with open(os.path.join(out_dir, img_name.replace('.jpg', '.txt')), 'w') as out_txt:
-
+        with open(os.path.join(out_dir, img_name.replace('.png', '.txt')), 'w') as out_txt:
+            if len(ann_list) == 0:
+                out_txt.write(f'')
+            
             for ann in ann_list:
                 if ann[0] == -1:
+                    out_txt.write(f'')
                     continue
                 category = ann[1] if ann[0] != 'text' else 'text'
                 difficulty = 0

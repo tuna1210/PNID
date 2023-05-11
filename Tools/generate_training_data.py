@@ -1,11 +1,53 @@
 import os
 import random
+import cv2
 import pickle
 from Data_Generator.generate_segmented_data import generate_segmented_data
 from Common.symbol_io import read_symbol_txt
 from Data_Generator.write_annotation import write_coco_annotation, write_dota_annotation
 from multiprocessing import Manager
+from Common.pnid_xml import xml_reader
 import parmap
+from tqdm import tqdm
+
+def generate_dota_data(xml_list, drawing_dir, out_dir, prefix):
+    '''분할하지 않은 정보를 리스트로 저장
+    '''
+    if os.path.exists(os.path.join(out_dir, prefix)) == False:
+        os.mkdir(os.path.join(out_dir, prefix))
+    
+    if os.path.exists(os.path.join(out_dir, prefix, 'annfiles')) == False:
+        os.mkdir(os.path.join(out_dir, prefix, 'annfiles'))
+    
+    if os.path.exists(os.path.join(out_dir, prefix, 'images')) == False:
+        os.mkdir(os.path.join(out_dir, prefix, 'images'))
+    
+    out_file_dir = os.path.join(out_dir, prefix, 'annfiles')
+    out_img_dir = os.path.join(out_dir, prefix, 'images')
+
+    entire_info = []
+    for xmlPath in tqdm(xml_list):
+        fname, ext = os.path.splitext(xmlPath)
+        if ext.lower() != ".xml":
+            continue
+
+        xmlReader = xml_reader(xmlPath)
+        img_filename, width, height, depth, object_list = xmlReader.getInfo()
+        img_file_path = os.path.join(drawing_dir, img_filename)
+
+        out_filename = img_filename.replace('.jpg', '.txt')
+        # print(out_filename)
+        out_file_path = os.path.join(out_file_dir, out_filename)
+        out_img_path = os.path.join(out_img_dir, img_filename)
+        
+        img = cv2.imread(img_file_path)
+        cv2.imwrite(out_img_path, img)
+
+        with open(out_file_path, 'w') as f:
+            for box in object_list:
+                category = 'text' if box[0] == 'text' else box[1]
+                difficulty = 0
+                f.write(f'{box[2]} {box[3]} {box[4]} {box[5]} {box[6]} {box[7]} {box[8]} {box[9]} {category} {difficulty}\n')
 
 # 학습 데이터 생성 코드. 도면을 train/test/val로 나누고, 각 set의 이미지를 분할하여 sub_img들로 만들어 저장함
 # 이때, train의 경우 심볼(또는 옵션에 따라 심볼+텍스트)가 존재하지 않는 도면은 저장하지 않음
@@ -13,8 +55,9 @@ import parmap
 
 base_dir = r"E:\PNID_Data\2023_0228"
 drawing_dir = base_dir + r"\Drawing"
-drawing_segment_dir = base_dir + r"\Drawing_Segment\800_800"
+drawing_segment_dir = base_dir + r"\Drawing_Segment\800_300_2"
 xml_dir = base_dir + r"\XML"
+out_dir = base_dir + r"\pnid"
 
 val_drawings = ['26071-200-M6-052-00025', '26071-200-M6-052-00039', '26071-200-M6-052-00046', '26071-200-M6-052-00073',
                 '26071-200-M6-052-00091', '26071-200-M6-052-00097', '26071-200-M6-052-00543', '26071-200-M6-052-00904',
@@ -93,12 +136,16 @@ def segment_and_write(prefix):
     write_dota_annotation(drawing_segment_dir, annotation_data, symbol_dict, segment_params, prefix)
 
 if __name__ == '__main__':
-    num_cores = 8
-    manager = Manager()
-    d = manager.dict()
-    input_list = ['train', 'val', 'test']
-    # segment_and_write('val')
-    parmap.map(segment_and_write, input_list, pm_pbar=True, pm_processes=num_cores)
+    # num_cores = 8
+    # manager = Manager()
+    # d = manager.dict()
+    # input_list = ['train', 'val', 'test']
+    # # segment_and_write('val')
+    # parmap.map(segment_and_write, input_list, pm_pbar=True, pm_processes=num_cores)
+
+    generate_dota_data(train_xmls, drawing_dir, out_dir, 'train')
+    generate_dota_data(val_xmls, drawing_dir, out_dir, 'val')
+    generate_dota_data(test_xmls, drawing_dir, out_dir, 'test')
 
 # val_annotation_data = generate_segmented_data(val_xmls, drawing_dir, drawing_segment_dir, segment_params,
 #                                               symbol_dict, drawing_resize_scale, "val")
