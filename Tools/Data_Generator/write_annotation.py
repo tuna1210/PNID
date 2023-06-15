@@ -74,7 +74,9 @@ def write_coco_annotation(out_path, annotation_data, symbol_dict, segment_params
                                        "ignore" : 0,
                                        "area" : area,
                                        "iscrowd" : 0,
-                                       "category_id": annotation[1]})
+                                       "category_id": annotation[1],
+                                       "string" : annotation[-1],
+                                       })
             instance_id = instance_id+1
 
     data["categories"] = []
